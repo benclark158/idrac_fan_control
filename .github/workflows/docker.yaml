@@ -1,0 +1,43 @@
+name: Docker Build and Push to GHCR
+
+on:
+  push:
+    branches:
+      - master  # Change this to your default branch if it's different
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    # Step 1: Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Step 2: Log in to GitHub Container Registry
+    - name: Log in to GHCR
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GH_TOKEN }}
+
+    - name: Convert repository owner to lowercase
+      id: repo_owner_lowercase
+      run: echo "REPO_OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+    - name: Log repository owner
+      run: echo "Repository owner in lowercase is $REPO_OWNER"
+
+
+    # Step 3: Build the Docker image
+    - name: Build Docker image
+      run: |
+        docker build -t ghcr.io/$REPO_OWNER/idrac_fan_control:latest .
+
+    # Step 4: Push the Docker image to GHCR
+    - name: Push Docker image
+      run: |
+        docker push ghcr.io/$REPO_OWNER/idrac_fan_control:latest
