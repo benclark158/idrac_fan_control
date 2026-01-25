@@ -197,8 +197,10 @@ class FanMonitor:
         try:
             self.__unsafe_run()
         except KeyboardInterrupt as e:
+            print('Keyboard interrupt')
             self.cleanup()()
         except Exception as e:
+            print(f'Clean up err {e}')
             self.cleanup()()
             raise e
 
@@ -214,6 +216,7 @@ class FanMonitor:
                 self.__loop(line=line)
                 error_count = 0
             except KeyboardInterrupt as e:
+                print('Keyboard interrupt')
                 raise e
             except Exception as e:
                 print('Error when controlling fan speed!')
