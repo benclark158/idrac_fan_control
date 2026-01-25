@@ -133,11 +133,11 @@ class FanMonitor:
         username = os.environ.get('IPMI_USER')
         password = os.environ.get('IPMI_PWD')
 
-        self.start_temp = os.environ.get('START_TEMP') or self.start_temp
-        self.start_fan = os.environ.get('START_FAN') or self.start_fan
-        self.end_temp = os.environ.get('END_TEMP') or self.end_temp
-        self.end_fan = os.environ.get('END_FAN') or self.end_fan
-        self.interval = os.environ.get('INTERVAL') or self.interval
+        self.start_temp = int(os.environ.get('START_TEMP') or self.start_temp)
+        self.start_fan = int(os.environ.get('START_FAN') or self.start_fan)
+        self.end_temp = int(os.environ.get('END_TEMP') or self.end_temp)
+        self.end_fan = int(os.environ.get('END_FAN') or self.end_fan)
+        self.interval = int(os.environ.get('INTERVAL') or self.interval)
 
         self.get_cpu_util = str(os.environ.get('GET_CPU_UTIL', False)) in ['t', '1', 'true', 'yes']
 
@@ -200,7 +200,7 @@ class FanMonitor:
             print('Keyboard interrupt')
             self.cleanup()()
         except Exception as e:
-            print(f'Clean up err {e}')
+            print(f'Error: {e}')
             self.cleanup()()
             raise e
 
@@ -216,7 +216,6 @@ class FanMonitor:
                 self.__loop(line=line)
                 error_count = 0
             except KeyboardInterrupt as e:
-                print('Keyboard interrupt')
                 raise e
             except Exception as e:
                 print('Error when controlling fan speed!')
