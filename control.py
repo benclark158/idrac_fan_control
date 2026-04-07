@@ -6,6 +6,7 @@ import os
 import threading
 import requests
 import json
+import traceback
 
 from datetime import datetime
 
@@ -207,8 +208,9 @@ class FanMonitor:
             print('Keyboard interrupt')
             self.cleanup()()
         except Exception as e:
+            print(f'Error: {e} with trace:')
+            traceback.print_exc()
             self.cleanup()()
-            print(f'Error: {e}')
             raise e
 
     def __unsafe_run(self):
