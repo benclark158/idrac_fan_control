@@ -254,7 +254,7 @@ class FanMonitor:
         temp: dict[str, float | int] = self.__ipmi.get_temps()
         temp.update(self.__cleanup_external_temps())
 
-        cpu_temp = [ temp for key, temp in temp.items() if key.lower().startswith('cpu') or key.lower().startswith('external_')]
+        cpu_temp = [ int(temp) for key, temp in temp.items() if key.lower().startswith('cpu') or key.lower().startswith('external_')]
         max_cpu_temp = max(cpu_temp)
         target_fan_speed = int(line.calculate(max_cpu_temp))
 
@@ -282,7 +282,9 @@ if __name__ == '__main__':
 
         while True:
             data = {
-                key: str(subprocess.run([cmd], capture_output=True, text=True, shell=True, timeout=30.0).stdout).removesuffix('\n')
+                key: float(
+                    str(subprocess.run([cmd], capture_output=True, text=True, shell=True, timeout=30.0).stdout).removesuffix('\n')
+                )
                 for key, cmd in commands
             }
 
