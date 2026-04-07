@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy the entire project into the working directory (where manage.py is located)
 COPY . .
 
+RUN pip install -r requirements.txt
+
 # Expose port (placeholder, will be used with the ENV variable)
 #EXPOSE 8000
 

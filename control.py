@@ -3,8 +3,13 @@ import time
 import signal
 import sys
 import os
+import threading
+import requests
+import json
 
 from datetime import datetime
+
+import webserver
 
 class Ipmi:
     __host: str
@@ -172,10 +177,12 @@ class FanMonitor:
         cpu_usage = self.__ipmi.get_cpu_util() if self.get_cpu_util else '??'
 
         temp_cols = [ (key.title(), len(key) + 2, str(value)) for key, value in temps.items() ]
-        
+        external_points = [ (title, len(title) + 2, str(data.get('value'))) for title, data in webserver.thermal_data.items() ]
+
         columns = [
             ("Datetime", 21, t),
-            *temp_cols
+            *temp_cols,
+            *external_points
         ]
 
         runtime_ms: float = (time.time() - st) * 1000
@@ -200,8 +207,8 @@ class FanMonitor:
             print('Keyboard interrupt')
             self.cleanup()()
         except Exception as e:
-            print(f'Error: {e}')
             self.cleanup()()
+            print(f'Error: {e}')
             raise e
 
     def __unsafe_run(self):
@@ -211,9 +218,14 @@ class FanMonitor:
         error_count = 0
 
         line = self.__calculate_function()
+        i = 0
         while True:
+            i = i + 1
+            if i >= 200:
+                i = 0
+
             try:
-                self.__loop(line=line)
+                self.__loop(line=line, loop_count=i)
                 error_count = 0
             except KeyboardInterrupt as e:
                 raise e
@@ -222,14 +234,24 @@ class FanMonitor:
 
                 # Exit the loop and cleanup if there are more than 10 errors in a row
                 # When this is in docker it should auto heal.
-                if error_count >= 10:
+                if error_count >= 5:
                     raise e
                 error_count += 1
 
-    def __loop(self, line: Line):
+    def __cleanup_external_temps(self) -> dict[str, float | int]:
+        return {
+            f'external_{key}': value.get('value')
+            for key, value in webserver.thermal_data.items()
+            if value.get('last_seen') > time.time() - 300
+        }
+
+    def __loop(self, line: Line, loop_count: int):
         loop_start_time = time.time()
-        temp = self.__ipmi.get_temps()
-        cpu_temp = [ temp for key, temp in temp.items() if key.lower().startswith('cpu')]
+        
+        temp: dict[str, float | int] = self.__ipmi.get_temps()
+        temp.update(self.__cleanup_external_temps())
+
+        cpu_temp = [ temp for key, temp in temp.items() if key.lower().startswith('cpu') or key.lower().startswith('external')]
         max_cpu_temp = max(cpu_temp)
         target_fan_speed = int(line.calculate(max_cpu_temp))
 
@@ -238,16 +260,50 @@ class FanMonitor:
         if target_fan_speed > self.end_fan:
             target_fan_speed = self.end_fan
 
-        self.print_table_row(temps=temp, target_speed=target_fan_speed, st=loop_start_time)
+        self.print_table_row(temps=temp, target_speed=target_fan_speed, include_headings=(loop_count % 50 == 0), st=loop_start_time)
         self.__ipmi.set_fan_speed(target_fan_speed)
             
         time.sleep(self.interval - (time.time() - loop_start_time))
 
 if __name__ == '__main__':
-    fan_monitor: FanMonitor = FanMonitor()
-    fan_monitor.run()
-    #try:
+    if str(os.environ.get('EXTERNAL_MONITOR', 'false')).lower() in ['true', 't', '1']:
+        prefix = 'external_command_'
+        commands = [
+            (key.removeprefix(prefix),  os.environ.get(key))
+            for key in os.environ.keys()
+            if key.lower().startswith(prefix)
+        ]
+        auth_key = os.environ.get('EXERNAL_SERVER_KEY')
+        server_host = os.environ.get('EXTERNAL_SERVER_HOST', 'http://localhost:8080')
+        interval = int(os.environ.get('INTERVAL', 30))
+
+        while True:
+            data = {
+                subprocess.run([cmd], capture_output=True, text=True, timeout=30.0)
+                for cmd in commands
+            }
+
+            print(f'Gathered data: {data}')
+
+            requests.post(
+                url=f'{server_host}/update_datepoint',
+                data=json.dumps(data)
+            )
+
+            time.sleep(interval)
+
+    elif str(os.environ.get('ENABLE_SERVER', 'false')).lower() in ['true', 't', '1']:
+        monitor = FanMonitor()
+        monitor_thread = threading.Thread(target=monitor.run, daemon=True)
+        monitor_thread.start()
         
-    #except Exception as _:
-    #    print('Exception!')
-    #    fan_monitor.cleanup()
+        # 2. Start Flask Server in the main thread
+        # Note: host='0.0.0.0' allows the VM to reach this across the bridge
+        print("[*] Starting Flask API on port 5000")
+        webserver.app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+    else:
+        fan_monitor: FanMonitor = FanMonitor()
+        fan_monitor.run()
+
+# Monitoring GPU
+# nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits
