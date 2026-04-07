@@ -1,5 +1,6 @@
 # Use the official Python 3.10 image as the base image
 FROM python:3.12-slim
+FROM nvidia/cuda:11.0-base
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
