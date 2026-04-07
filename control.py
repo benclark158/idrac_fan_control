@@ -254,8 +254,8 @@ class FanMonitor:
         temp: dict[str, float | int] = self.__ipmi.get_temps()
         temp.update(self.__cleanup_external_temps())
 
-        max_cpu_temp = max(cpu_temp)
         cpu_temp = [ temp for key, temp in temp.items() if key.lower().startswith('cpu') or key.lower().startswith('external_')]
+        max_cpu_temp = max(cpu_temp)
         target_fan_speed = int(line.calculate(max_cpu_temp))
 
         if target_fan_speed < self.start_fan:
