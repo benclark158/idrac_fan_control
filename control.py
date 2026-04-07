@@ -282,7 +282,7 @@ if __name__ == '__main__':
 
         while True:
             data = {
-                key: subprocess.run([cmd], capture_output=True, text=True, shell=True, timeout=30.0).stdout
+                key: str(subprocess.run([cmd], capture_output=True, text=True, shell=True, timeout=30.0).stdout).removesuffix('\n')
                 for key, cmd in commands
             }
 
