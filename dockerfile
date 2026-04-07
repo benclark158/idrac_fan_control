@@ -13,7 +13,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     ipmitool \
-    nvidia-utils-common \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file into the working directory

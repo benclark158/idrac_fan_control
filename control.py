@@ -282,6 +282,7 @@ if __name__ == '__main__':
         while True:
             data = {
                 key: subprocess.run([cmd], capture_output=True, text=True, timeout=30.0)
+                key: subprocess.run([cmd], capture_output=True, text=True, shell=True, timeout=30.0)
                 for key, cmd in commands
             }
 
