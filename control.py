@@ -7,6 +7,7 @@ import threading
 import requests
 import json
 import traceback
+import re
 
 from datetime import datetime
 
@@ -289,7 +290,10 @@ if __name__ == '__main__':
 
             requests.post(
                 url=f'{server_host}/update_datepoint',
-                data=json.dumps(data)
+                data=json.dumps({
+                    key: re.sub(r'[^0-9]', '', value)
+                    for key, value in data.items()
+                })
             )
 
             time.sleep(interval)
