@@ -1,6 +1,5 @@
 # Use the official Python 3.10 image as the base image
 FROM python:3.12-slim
-FROM nvidia/cuda
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -14,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     ipmitool \
+    nvidia-utils-common \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file into the working directory
