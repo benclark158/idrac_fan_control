@@ -13,12 +13,7 @@ app = Flask(__name__)
 #       "last_seen": 123456789
 #   }
 # }
-thermal_data = {
-    "data_point": {
-       "value": 40.0,
-       "last_seen": 123456789
-   }
-}
+thermal_data = {}
 
 # --- FLASK ENDPOINT ---
 @app.route('/update_datepoint', methods=['POST'])

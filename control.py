@@ -281,8 +281,8 @@ if __name__ == '__main__':
 
         while True:
             data = {
-                subprocess.run([cmd], capture_output=True, text=True, timeout=30.0)
-                for cmd in commands
+                key: subprocess.run([cmd], capture_output=True, text=True, timeout=30.0)
+                for key, cmd in commands
             }
 
             print(f'Gathered data: {data}')
