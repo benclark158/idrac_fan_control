@@ -302,10 +302,31 @@ if __name__ == '__main__':
         monitor_thread = threading.Thread(target=monitor.run, daemon=True)
         monitor_thread.start()
         
-        # 2. Start Flask Server in the main thread
+        # 2. Start Flask in a background thread
         # Note: host='0.0.0.0' allows the VM to reach this across the bridge
         print("[*] Starting Flask API on port 5000")
-        webserver.app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+        flask_thread = threading.Thread(
+            target=webserver.app.run, 
+            kwargs={'host': '0.0.0.0', 'port': 8080, 'debug': False, 'use_reloader': False},
+            daemon=True
+        )
+        flask_thread.start()
+
+        # 3. Main thread supervises both
+        try:
+            while True:
+                if not monitor_thread.is_alive():
+                    print("[!] FanMonitor thread died! Exiting...", file=sys.stderr)
+                    sys.exit(1)
+                    
+                if not flask_thread.is_alive():
+                    print("[!] Flask server thread died! Exiting...", file=sys.stderr)
+                    sys.exit(1)
+                    
+                time.sleep(1)  # Sleep briefly to avoid maxing out the CPU
+        except KeyboardInterrupt:
+            print("[*] Shutting down gracefully...")
+            sys.exit(0)
     else:
         fan_monitor: FanMonitor = FanMonitor()
         fan_monitor.run()
