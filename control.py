@@ -38,8 +38,8 @@ class Ipmi:
         except subprocess.TimeoutExpired as e:
             if timeout > 120:
                 raise e
-            print(f'Command process timeout - waiting: {int(timeout*2)}s')
-            self.send_ipmi_command(cmd=cmd, timeout=timeout*2)
+            print(f'Command process timeout - waiting: {int(timeout*1.5)}s')
+            return self.send_ipmi_command(cmd=cmd, timeout=timeout*1.5)
 
     def get_temps(self) -> dict[str, int]:
         result, _, _ = self.send_ipmi_command(cmd=['sdr', 'type', 'temperature'])
