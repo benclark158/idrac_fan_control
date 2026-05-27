@@ -23,20 +23,26 @@ class Ipmi:
         self.__username = username or 'root'
         self.__password = password or 'calvin'
 
-    def send_ipmi_command(self, *args):
-        result = subprocess.run([
-            'ipmitool', 
-            '-I', 'lanplus',
-            '-H', f'{self.__host}',
-            '-U', f'{self.__username}',
-            '-P', f'{self.__password}',
-            *args
-        ], capture_output=True, text=True, timeout=30.0)
+    def send_ipmi_command(self, timeout: float = 30.0, cmd: list[str] = []):
+        try:
+            result = subprocess.run([
+                'ipmitool', 
+                '-I', 'lanplus',
+                '-H', f'{self.__host}',
+                '-U', f'{self.__username}',
+                '-P', f'{self.__password}',
+                *cmd
+            ], capture_output=True, text=True, timeout=timeout)
 
-        return result.stdout, result.stderr, ' '.join(result.args)
+            return result.stdout, result.stderr, ' '.join(result.args)
+        except subprocess.TimeoutExpired as e:
+            if timeout > 120:
+                raise e
+            print(f'Command process timeout - waiting: {int(timeout*2)}s')
+            self.send_ipmi_command(cmd=cmd, timeout=timeout*2)
 
     def get_temps(self) -> dict[str, int]:
-        result, _, _ = self.send_ipmi_command('sdr', 'type', 'temperature')
+        result, _, _ = self.send_ipmi_command(cmd=['sdr', 'type', 'temperature'])
         lines = result.split('\n')
         temps = {}
 
@@ -71,18 +77,18 @@ class Ipmi:
     def set_fan_speed(self, speed: int):
         # limit speed between 0 and 100 %
         speed = min(100, max(0, speed))
-        self.send_ipmi_command('raw', '0x30', '0x30', '0x02', '0xff', hex(speed))
+        self.send_ipmi_command(cmd=['raw', '0x30', '0x30', '0x02', '0xff', hex(speed)])
 
     def disable_auto_fans(self):
-        self.send_ipmi_command('raw', '0x30', '0x30', '0x01', '0x00')
+        self.send_ipmi_command(cmd=['raw', '0x30', '0x30', '0x01', '0x00'])
         print('Disabled Automatic Fans')
 
     def enable_auto_fans(self):
-        self.send_ipmi_command('raw', '0x30', '0x30', '0x01', '0x01')
+        self.send_ipmi_command(cmd=['raw', '0x30', '0x30', '0x01', '0x01'])
         print('Enabled Automatic Fans')
 
     def get_cpu_util(self) -> int:
-        result, _, _ = self.send_ipmi_command('sdr', 'get', 'CPU Usage', '0x01', '0x01')
+        result, _, _ = self.send_ipmi_command(cmd=['sdr', 'get', 'CPU Usage', '0x01', '0x01'])
         reading: str = [ line for line in result.split('\n') if 'Sensor Reading' in line][0]
         return int(reading.strip().split(':', 1)[1].strip().split(' ')[0])
 
